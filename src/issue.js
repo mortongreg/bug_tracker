@@ -118,12 +118,18 @@ export class ViewIssueForm extends React.Component {
             error: null,
             isFetching: false,
             issueID: props.issueID,
-            issue: '',
+            issueTitle: props.title,
+            issueStatus: props.status,
+            issueUser: props.user,
             editingIssue: false,
+            editingComment: false,
+            editingCommentID: null,
+            editingCommentData:"",
             comments: [],
             commenting: false,
             commentSubmitted: false,
             commentData: ""
+
         };
 
         this.handleChange = this.handleChange.bind(this);
@@ -131,7 +137,7 @@ export class ViewIssueForm extends React.Component {
 
         //this.handleIssueChange = this.handleIssueChange.bind(this);
         this.handleIssueSubmit = this.handleIssueSubmit.bind(this);
-
+        this.handleEditCommentSubmit = this.handleEditCommentSubmit.bind(this);
 
 
     }
@@ -144,6 +150,26 @@ export class ViewIssueForm extends React.Component {
     }
 
     handleIssueSubmit(event) {
+        console.log("CLICKED " + this.state.commentData + "ID: " + this.state.issueID);
+        event.preventDefault();
+        fetch("http://127.0.0.1:5000/update_issue", {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "id=" + this.state.issueID + "&title=" + this.state.issueTitle + "&description=" + this.state.issueDescription,
+            method: "POST",
+            mode: "cors"
+        })
+            .then(result => {
+                this.setState({ editingIssue: false })
+                this.fetchIssueWithAPI();
+                this.fetchCommentsWithAPI();
+            })
+            .catch(e => {
+                console.log(e);
+                this.setState({ ...this.state });
+            });
+
 
     }
 
@@ -197,8 +223,8 @@ export class ViewIssueForm extends React.Component {
         })
             .then(response => response.json())
             .then(result => {
-                this.setState({ issue: result })
-                console.log("HERE:" + this.state.issue.title);
+                this.setState({ issueTitle: result.title, issueDescription: result.description, issueStatus: result.status })
+                console.log("HERE:" + this.state.issueTitle);
             })
             .catch(e => {
                 console.log(e);
@@ -262,17 +288,23 @@ export class ViewIssueForm extends React.Component {
             return (<Button className="button" onClick={this.addComment.bind(this)}>Add Comment</Button>);
         }
     }
-    Editing() {
+    EditingIssue() {
         if (this.state.editingIssue == true) {
             return (
-                <Form onSubmit={this.handleIssueSubmit}>
-                    <Form.Group controlId="formBasicText">
-                        <Form.Control name="commentData" value={this.state.commentData} onChange={this.handleChange} type="text" placeholder="data" />
-                    </Form.Group>
-                    <Button variant="primary" type="submit">
-                        Submit
-              </Button>
-                </Form>
+                <div>
+                    <Form onSubmit={this.handleIssueSubmit}>
+                        <Form.Group controlId="formBasicText">
+
+                            <Form.Control name="issueTitle" value={this.state.issueTitle} onChange={this.handleChange} type="text" placeholder="data" />
+                            <Form.Control name="issueDescription" value={this.state.issueDescription} onChange={this.handleChange} type="text" placeholder="data" />
+
+                            <Button variant="primary" type="submit">
+                                Submit
+                            </Button>
+                            <Button variant="primary" type="cancel">Cancel</Button>
+                        </Form.Group>
+                    </Form>
+                </div>
             );
 
         }
@@ -280,10 +312,10 @@ export class ViewIssueForm extends React.Component {
             return (
                 <div>
                     <h5>
-                        {this.state.issue.title}
+                        {this.state.issueTitle}
                     </h5>
                     <p>
-                        {this.state.issue.description}
+                        {this.state.issueDescription}
                     </p>
 
                     <Button className="button" onClick={this.editIssue.bind(this)}>Edit Issue</Button>
@@ -292,37 +324,82 @@ export class ViewIssueForm extends React.Component {
         }
     }
 
+    onEditComment(id) {
 
+        this.setState({ editingComment: true, editingCommentID: id })
+        console.log(id);
+    }
+
+    handleEditCommentSubmit(event,data) {
+        event.preventDefault();
+        console.log("Frick"+data +" " + this.state.editingCommentID)
+
+        /*console.log("Submit this edit event" + data);
+        */
+
+        fetch("http://127.0.0.1:5000/update_comment", {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "id=" + this.state.editingCommentID + "&data=" + data,
+            method: "POST",
+            mode: "cors"
+        })
+            .then(result => {
+                this.setState({ editingComment: false,editingCommentID: null })
+                this.fetchIssueWithAPI();
+                this.fetchCommentsWithAPI();
+            })
+            .catch(e => {
+                console.log(e);
+                this.setState({ ...this.state });
+            });
+
+    }
 
     render() {
         if (this.state.isFetching == false) {
             const commenting = this.Commenting(this.state.issueID);
-            const editingIssue = this.Editing();
+            const editingIssue = this.EditingIssue();
             return (
                 <div className="Content col-8" >
                     <Media>
-                        <img
-                            width={64}
-                            height={64}
-                            className="mr-3"
-                            src="holder.js/64x64"
-                            alt="Generic placeholder"
-                        />
+                        {/*        <img
+                                width={64}
+                                height={64}
+                                className="mr-3"
+                                src="holder.js/64x64"
+                                alt="Generic placeholder"
+                    />*/}
                         <Media.Body>
                             {editingIssue}
                             <hr />
                             {
                                 this.state.comments.map((comment) => (
-                                    <Comment
-                                        data={comment.data}
-                                        id={this.state.issueID}
-                                    />
+                                    this.state.editingCommentID == comment.id ?
+                                        <Comment
+                                            data={comment.data}
+                                            id={comment.id}
+                                            key={comment.id}
+                                            onEditComment={() => this.onEditComment(comment.id)}
+                                            editing={true}
+                                            handleEditSubmit={this.handleEditCommentSubmit}
+                                        />
+                                        :
+                                        <Comment
+                                            data={comment.data}
+                                            id={comment.id}
+                                            key={comment.id}
+                                            onEditComment={() => this.onEditComment(comment.id)}
+                                            editing={false}
+                                        />
+
                                 ))
 
                             }
                         </Media.Body>
                     </Media>
-                    { commenting}
+                    {commenting}
                 </div>
             );
         }
@@ -337,23 +414,66 @@ export class Comment extends React.Component {
 
     constructor(props) {
         super(props);
+        this.state = {
+            id: props.id,
+            data: props.data,
+        }
+        this.handleChange = this.handleChange.bind(this);
+
+    }
+
+    handleChange(event) {
+        const target = event.target;
+        const value = target.type === 'checkbox' ? target.checked : target.value;
+        const name = target.name;
+
+        this.setState({
+            [name]: value
+        });
     }
 
 
+    handleEditSubmit = (e,data) => {
+        this.props.handleEditSubmit(e,data)
+    }
     render() {
+        
         return (
             <Media>
-                <img
-                    width={64}
-                    height={64}
-                    className="mr-3"
-                    src="holder.js/64x64"
-                    alt="Generic placeholder"
-                />
+                {/*        <img
+                                width={64}
+                                height={64}
+                                className="mr-3"
+                                src="holder.js/64x64"
+                                alt="Generic placeholder"
+                    />*/}
                 <Media.Body>
-                    <p>
-                        {this.props.data}
-                    </p>
+                    {
+                        this.props.editing == true &&
+                        <Form onSubmit={(e) => this.handleEditSubmit(e,this.state.data)}>
+                            <Form.Group controlId="formBasicText">
+
+                                <Form.Control name="data" value={this.state.data} onChange={this.handleChange} type="text" />
+
+                                <Button variant="primary" type="submit">
+                                    Submit
+                            </Button>
+                                <Button variant="primary" type="cancel">Cancel</Button>
+                            </Form.Group>
+                        </Form>
+
+                    }
+                    {
+                        this.props.editing == false &&
+                        <div>
+                            <p>
+                                {this.props.data}
+                            </p>
+                            <Button onClick={this.props.onEditComment} variant="primary" value={this.props.id} type="submit" >
+                                Edit Comment
+                          </Button>
+                        </div>
+                    }
                 </Media.Body>
             </Media>
 

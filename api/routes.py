@@ -77,7 +77,29 @@ def get_issue():
 
 @app.route('/update_issue', methods=["POST", "GET"])
 def update_issue():
-    return "Updated Issue"
+    if request.method == "POST":
+        pprint(request.form)
+        issue_id = request.form['id'] if "id" in request.form else None
+        issue = db.session.query(Issue).get(issue_id)
+
+        issueTitle = request.form["title"] if "title" in request.form else issue.title
+        issueDescription = request.form["description"] if "description" in request.form else issue.description
+        issueStatus = request.form["status"] if "status" in request.form else issue.status
+        issueAssignedTo = request.form["assigned_to"] if "assigned_to" in request.form else issue.assigned_to
+        dateModified = datetime.now()
+        pprint(dateModified)
+        setattr(issue,"title",issueTitle)
+        setattr(issue,"description",issueDescription)
+        setattr(issue,"status",issueStatus)
+        setattr(issue,"assigned_to",issueAssignedTo)
+        setattr(issue,"date_modified",dateModified)
+        
+        db.session.commit()
+        return str(issue_id) + " has been modified"
+    else:
+        return "YOU ARE FORBIDDEN FROM THIS"
+    return "YOU ARE FORBIDDEN FROM THIS"
+
 
 
 @app.route('/delete_issue', methods=["POST", "GET"])
@@ -149,7 +171,23 @@ def get_comment():
 
 @app.route('/update_comment', methods=["POST", "GET"])
 def update_comment():
-    return "Comment updated"
+    if request.method == "POST":
+        pprint(request.form)
+        comment_id = request.form['id'] if "id" in request.form else None
+        comment = db.session.query(Comment).get(comment_id)
+
+        commentData= request.form["data"] if "data" in request.form else None
+        dateModified = datetime.now()
+        setattr(comment,"data",commentData)
+        setattr(comment,"date_modified",dateModified)
+        
+        db.session.commit()
+        return str(comment_id) + " has been modified"
+    else:
+        return "YOU ARE FORBIDDEN FROM THIS"
+    return "YOU ARE FORBIDDEN FROM THIS"
+
+
 
 
 @app.route('/delete_comment', methods=["POST", "GET"])
